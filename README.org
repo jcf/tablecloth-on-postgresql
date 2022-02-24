@@ -111,7 +111,7 @@ LIMIT 10
 #+end_src
 
 ** Create a dataset
-#+begin_src clojure
+#+begin_src clojure :exports both
 (do
   (def ds
     (with-open [conn (postgres/connect!)]
@@ -154,7 +154,7 @@ _unnamed [2499836 10]:
 #+end_example
 
 ** Inspect the dataset
-#+begin_src clojure
+#+begin_src clojure :exports both
 (tc/info ds)
 #+end_src
 
@@ -178,7 +178,7 @@ _unnamed: descriptive-stats [10 12]:
 
 ** Activity by week
 *** Group by week
-#+begin_src clojure
+#+begin_src clojure :exports both
 (do
   (def weekly (explore/weekly ds))
   weekly)
@@ -218,7 +218,7 @@ _unnamed [2499836 12]:
 #+end_example
 
 *** Frequencies
-#+begin_src clojure
+#+begin_src clojure :exports both
 (sort-by second > (map vec (frequencies (map str (tc/column weekly :type)))))
 #+end_src
 
