@@ -226,7 +226,6 @@ _unnamed [2499836 12]:
 | subscribe | 1250241 |
 | like      | 1249595 |
 
-
 * Development
 ** Faker
 To make things a little more fun, we use some Faker fixtures to generate data.
