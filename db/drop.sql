@@ -1,0 +1,2 @@
+DROP DATABASE IF EXISTS tablecloth;
+DROP ROLE IF EXISTS scientist;

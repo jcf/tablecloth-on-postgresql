@@ -1,0 +1,4 @@
+#!/bin/sh
+sudo su postgres -c 'psql --file=db/init-user.sql' &&
+  sudo su postgres -c 'psql --file=db/init-db.sql' &&
+  sudo su postgres -c 'psql --username scientist --file=db/schema.sql tablecloth'

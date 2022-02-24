@@ -1,0 +1,250 @@
+:PROPERTIES:
+:header-args:sql+: :engine postgresql
+:header-args:sql+: :dbhost "localhost"
+:header-args:sql+: :dbuser "scientist"
+:header-args:sql+: :dbpass "please"
+:header-args:sql+: :database "tablecloth"
+:END:
+#+title:  Tablecloth on PostgreSQL
+#+author: James Conroy-Finn
+#+date:   2022-02-24
+
+* Getting started
+** PostgreSQL setup
+We need a PostgreSQL server, which you can run in a container etc. Assuming a
+running server on =localhost:5432=, and superuser access available, [[file:bin/setup][=bin/setup=]]
+script will create the necessary schema.
+
+#+begin_src sh :results output verbatim
+bin/setup 2>&1
+#+end_src
+
+#+results:
+: CREATE ROLE
+: CREATE DATABASE
+: GRANT
+: CREATE EXTENSION
+: CREATE TABLE
+: CREATE TYPE
+: CREATE TABLE
+
+** PostgreSQL schema
+#+begin_src sql
+\d
+#+end_src
+
+#+results:
+| List of relations |            |       |           |
+|-------------------+------------+-------+-----------|
+| Schema            | Name       | Type  | Owner     |
+| public            | activities | table | scientist |
+| public            | people     | table | scientist |
+
+** Wiping the database
+To wipe out the database and associated user execute [[file:db/drop.sql][=db/drop.sql=]].
+
+#+begin_src sh :eval query :results output verbatim
+bin/drop 2>&1
+#+end_src
+
+#+results:
+: DROP DATABASE
+: DROP ROLE
+** Seeding the database
+You can fill your PostgreSQL database with some excessive use of Clojure and
+=clojure.spec= via the =top.seed= namespace.
+
+#+begin_src clojure :eval never
+(in-ns 'top.seed)
+
+(with-open [conn (postgres/connect!)]
+  (seed-users! conn)
+  (seed-activities! conn))
+#+end_src
+
+* Activities
+** Select from the database
+#+begin_src sql
+SELECT
+  activities.type,
+  activities.created_at,
+  src.username AS src,
+  dest.username AS dest
+FROM activities
+INNER JOIN people AS src ON src.id = activities.src_id
+INNER JOIN people AS dest ON dest.id = activities.dest_id
+ORDER BY activities.created_at ASC
+LIMIT 10
+#+end_src
+
+#+results:
+| type      | created_at                 | src                                  | dest                                   |
+|-----------+----------------------------+--------------------------------------+----------------------------------------|
+| like      | 2022-02-24 19:07:03.747671 | mint-green-sleet-patches-mustache    | blue-mostly-cloudy-mia-helvetica       |
+| like      | 2022-02-24 19:07:03.747671 | red-mostly-cloudy-harvey-banjo       | salmon-cloudy-periods-zoe-lumbersexual |
+| like      | 2022-02-24 19:07:03.747671 | red-rain-tyson-listicle              | sky-blue-clear-skies-sandy-forage      |
+| like      | 2022-02-24 19:07:03.747671 | turquoise-drizzle-taz-selvage        | orange-thunder-falls-coco-skateboard   |
+| subscribe | 2022-02-24 19:07:03.747671 | orange-thunderstorms-brutus-mustache | orchid-mostly-cloudy-harley-austin     |
+| subscribe | 2022-02-24 19:07:03.747671 | black-fine-daisy-distillery          | plum-snow-rusty-drinking               |
+| subscribe | 2022-02-24 19:07:03.747671 | green-drizzle-lady-cold-pressed      | blue-sleet-chloe-tumblr                |
+| subscribe | 2022-02-24 19:07:03.747671 | black-thunderstorms-sam-occupy       | salmon-rain-coco-phlogiston            |
+| subscribe | 2022-02-24 19:07:03.747671 | plum-drizzle-chico-locavore          | grey-clear-skies-daisy-offal           |
+| subscribe | 2022-02-24 19:07:03.747671 | tan-snow-roxie-fashion-axe           | maroon-thunderstorms-sam-park          |
+
+** Disable nREPL timeouts
+#+begin_src emacs-lisp :results silent
+(setq nrepl-sync-request-timeout nil)
+#+end_src
+
+** Require namespaces
+#+begin_src clojure :results silent
+(clojure.tools.namespace.repl/refresh-all)
+
+(require
+ '[clojure.string :as str]
+ '[top.explore :as explore]
+ '[top.postgres :as postgres]
+ '[tablecloth.api :as tc]
+ '[tech.v3.datatype.functional :as func])
+
+(in-ns 'user)
+#+end_src
+
+** Create a dataset
+#+begin_src clojure
+(do
+  (def ds
+    (with-open [conn (postgres/connect!)]
+      (explore/query->dataset conn explore/activities-query)))
+
+  ds)
+#+end_src
+
+#+results:
+#+begin_example
+_unnamed [2499836 10]:
+
+|                              :src-id |                             :dest-id |                 :created-at |     :type |                                  :id |                              :username |                 :created-at |                                  :id |                                  :username |                 :created-at |
+|--------------------------------------|--------------------------------------|-----------------------------|-----------|--------------------------------------|----------------------------------------|-----------------------------|--------------------------------------|--------------------------------------------|-----------------------------|
+| 0a370496-f662-490d-a941-c5f97a784e68 | eaa8baac-9c41-4c73-b33b-a5a53ed47e18 | 2022-02-24T19:07:03.747671Z | subscribe | 0a370496-f662-490d-a941-c5f97a784e68 |     green-partly-cloudy-sammy-crucifix | 2022-02-24T18:57:47.517352Z | eaa8baac-9c41-4c73-b33b-a5a53ed47e18 |                 indigo-sunny-precious-swag | 2022-02-24T18:57:48.809958Z |
+| d08a0aa2-7019-4f84-a50d-44175785a977 | e2b4ed97-ca47-476e-b5f2-4efe16e4f5ff | 2022-02-24T19:07:03.747671Z | subscribe | d08a0aa2-7019-4f84-a50d-44175785a977 |      magenta-partly-cloudy-murphy-goth | 2022-02-24T18:57:49.800476Z | e2b4ed97-ca47-476e-b5f2-4efe16e4f5ff |           maroon-mostly-cloudy-buster-blog | 2022-02-24T18:57:48.098399Z |
+| 4a6d04fd-9cbf-4b4b-af66-4b6e24302419 | 66439e20-a54e-4b0d-87a3-58613698e00c | 2022-02-24T19:07:03.747671Z | subscribe | 4a6d04fd-9cbf-4b4b-af66-4b6e24302419 |        ivory-clear-skies-precious-xoxo | 2022-02-24T18:57:50.166695Z | 66439e20-a54e-4b0d-87a3-58613698e00c |            yellow-overcast-bailey-crucifix | 2022-02-24T18:57:48.069124Z |
+| e5110c85-03d7-4581-9174-8384215a2a0e | 9b7c225e-726b-488b-845f-afda1f25f531 | 2022-02-24T19:07:03.747671Z |      like | e5110c85-03d7-4581-9174-8384215a2a0e |          grey-showers-jasper-semiotics | 2022-02-24T18:57:48.010987Z | 9b7c225e-726b-488b-845f-afda1f25f531 |       black-mostly-cloudy-teddy-humblebrag | 2022-02-24T18:57:47.434984Z |
+| c55640da-90ce-48e4-ae3b-40df77514bf1 | de908c3c-f238-4daa-a4c5-bc8a135d3132 | 2022-02-24T19:07:03.747671Z | subscribe | c55640da-90ce-48e4-ae3b-40df77514bf1 |                lime-sunny-bruno-tumblr | 2022-02-24T18:57:47.489250Z | de908c3c-f238-4daa-a4c5-bc8a135d3132 |                   silver-hail-bailey-offal | 2022-02-24T18:57:47.774192Z |
+| ef46b135-e627-4e35-b3a4-9a45515314d8 | b91b6f6b-f2e8-4362-a57d-f7f55e92d808 | 2022-02-24T19:07:03.747671Z | subscribe | ef46b135-e627-4e35-b3a4-9a45515314d8 |       white-thunderstorms-rocky-salvia | 2022-02-24T18:57:47.380700Z | b91b6f6b-f2e8-4362-a57d-f7f55e92d808 |  mint-green-cloudy-periods-gracie-gentrify | 2022-02-24T18:57:49.303853Z |
+| 19a7f330-45aa-4894-a47b-24d8a0bfbc88 | ec7db4f0-9eac-4612-aa48-ef6178da511c | 2022-02-24T19:07:03.747671Z |      like | 19a7f330-45aa-4894-a47b-24d8a0bfbc88 |           gold-clear-skies-buster-lomo | 2022-02-24T18:57:50.166695Z | ec7db4f0-9eac-4612-aa48-ef6178da511c | gold-thunder-falls-baxter-put-a-bird-on-it | 2022-02-24T18:57:49.303853Z |
+| 406ae1d1-c1e4-4040-a8a7-841133f9dc67 | 22fcec6c-8684-4f39-9f2e-977a1a52d7cd | 2022-02-24T19:07:03.747671Z |      like | 406ae1d1-c1e4-4040-a8a7-841133f9dc67 |             indigo-sleet-sophie-celiac | 2022-02-24T18:57:47.629472Z | 22fcec6c-8684-4f39-9f2e-977a1a52d7cd |        orange-mostly-cloudy-lily-biodiesel | 2022-02-24T18:57:47.601395Z |
+| 9e366b0c-e1e7-462a-b21f-a65f67cc4fb0 | 431e3a71-bf1a-4545-bd18-6d373f09cca0 | 2022-02-24T19:07:03.747671Z | subscribe | 9e366b0c-e1e7-462a-b21f-a65f67cc4fb0 |       silver-thunder-falls-spike-squid | 2022-02-24T18:57:49.481694Z | 431e3a71-bf1a-4545-bd18-6d373f09cca0 |           cyan-partly-cloudy-lola-cardigan | 2022-02-24T18:57:47.980092Z |
+| 55f5769d-0934-48d3-ba46-7ea9d2833aa3 | 8f321c00-c566-49a2-bd85-e07744e956dc | 2022-02-24T19:07:03.747671Z | subscribe | 55f5769d-0934-48d3-ba46-7ea9d2833aa3 |                    tan-snow-blue-fixie | 2022-02-24T18:57:49.001677Z | 8f321c00-c566-49a2-bd85-e07744e956dc |      white-thunder-falls-diamond-authentic | 2022-02-24T18:57:47.434984Z |
+| 6f06c3f8-5ab5-449a-b31d-0d606584a355 | 3212fcc9-be1a-4d42-8626-5c355cc37fa7 | 2022-02-24T19:07:03.747671Z |      like | 6f06c3f8-5ab5-449a-b31d-0d606584a355 |             gold-snow-misty-humblebrag | 2022-02-24T18:57:49.514445Z | 3212fcc9-be1a-4d42-8626-5c355cc37fa7 |                    red-fine-baby-scenester | 2022-02-24T18:57:48.532790Z |
+| 80bc0bd1-2839-48ea-a071-f71969b5d18f | b5687672-95cb-4fd9-b6c1-7eeff8d44f3d | 2022-02-24T19:07:03.747671Z | subscribe | 80bc0bd1-2839-48ea-a071-f71969b5d18f |          turquoise-drizzle-sugar-venmo | 2022-02-24T18:57:48.346107Z | b5687672-95cb-4fd9-b6c1-7eeff8d44f3d |      indigo-thunderstorms-jasmine-keffiyeh | 2022-02-24T18:57:48.069124Z |
+| ab6f0caf-23d9-430f-96ab-d15285ff75a1 | cdd1e755-88bd-4be3-9f17-db9508d6ed27 | 2022-02-24T19:07:03.747671Z | subscribe | ab6f0caf-23d9-430f-96ab-d15285ff75a1 |         purple-overcast-sparky-flannel | 2022-02-24T18:57:49.899652Z | cdd1e755-88bd-4be3-9f17-db9508d6ed27 |             blue-thunder-falls-harley-cray | 2022-02-24T18:57:47.921305Z |
+| 8b89c780-55a1-4ff3-9b6e-197424654ccf | ed0b44c0-1db9-45f6-9336-d836b61ff85e | 2022-02-24T19:07:03.747671Z | subscribe | 8b89c780-55a1-4ff3-9b6e-197424654ccf | silver-thunder-falls-precious-gentrify | 2022-02-24T18:57:48.809958Z | ed0b44c0-1db9-45f6-9336-d836b61ff85e |           teal-partly-cloudy-dixie-selvage | 2022-02-24T18:57:49.769661Z |
+| bfedba84-d981-4622-8d9d-1f3de4209b2d | 59601c11-190b-4cd8-a7fb-2e01dae67714 | 2022-02-24T19:07:03.747671Z |      like | bfedba84-d981-4622-8d9d-1f3de4209b2d |   purple-thunder-falls-sparky-polaroid | 2022-02-24T18:57:47.235727Z | 59601c11-190b-4cd8-a7fb-2e01dae67714 |                     turquoise-snow-mia-pug | 2022-02-24T18:57:50.096322Z |
+| 769e4d48-8ba5-471c-9c15-c1f085956fd5 | 85981bc8-6ec0-42b5-af90-11ef8fed8a6b | 2022-02-24T19:07:03.747671Z | subscribe | 769e4d48-8ba5-471c-9c15-c1f085956fd5 |               tan-sleet-roxy-authentic | 2022-02-24T18:57:49.377876Z | 85981bc8-6ec0-42b5-af90-11ef8fed8a6b |        gold-clear-skies-scooter-pork-belly | 2022-02-24T18:57:49.831429Z |
+| eee1b6df-d1db-4bc3-a486-0906ff833e10 | aefcdbe1-e754-4b1f-aab0-ed6bfabe67b6 | 2022-02-24T19:07:03.747671Z | subscribe | eee1b6df-d1db-4bc3-a486-0906ff833e10 |     silver-thunder-falls-angel-banh-mi | 2022-02-24T18:57:48.970905Z | aefcdbe1-e754-4b1f-aab0-ed6bfabe67b6 |      teal-cloudy-periods-sassy-small-batch | 2022-02-24T18:57:47.546598Z |
+| 5ea31f3b-b8ce-4ebb-9891-095ea9e212c5 | 058cb836-e58e-426d-93b5-a9be85f009a5 | 2022-02-24T19:07:03.747671Z |      like | 5ea31f3b-b8ce-4ebb-9891-095ea9e212c5 |          indigo-hail-rusty-sustainable | 2022-02-24T18:57:47.326093Z | 058cb836-e58e-426d-93b5-a9be85f009a5 |             salmon-drizzle-shadow-leggings | 2022-02-24T18:57:47.573653Z |
+| 94deada8-8833-427e-97a8-2110e13f4d04 | b0bdbd75-e867-403f-92f2-46d70c6e3ba0 | 2022-02-24T19:07:03.747671Z |      like | 94deada8-8833-427e-97a8-2110e13f4d04 |         yellow-thunder-falls-belle-diy | 2022-02-24T18:57:49.708103Z | b0bdbd75-e867-403f-92f2-46d70c6e3ba0 |                      gold-sunny-rex-tumblr | 2022-02-24T18:57:50.056871Z |
+| 7ab82ece-b2b2-4c5e-8a7e-37b1650811d4 | f18d89f5-bcfc-4d7b-9ec1-f8a67bc10b85 | 2022-02-24T19:07:03.747671Z |      like | 7ab82ece-b2b2-4c5e-8a7e-37b1650811d4 |    green-thunderstorms-cookie-everyday | 2022-02-24T18:57:49.931186Z | f18d89f5-bcfc-4d7b-9ec1-f8a67bc10b85 |                      pink-sleet-daisy-vice | 2022-02-24T18:57:50.277562Z |
+| afee8a58-eaa4-445b-98e7-ecb9d5f2f676 | fb215388-14d6-4870-9fa3-8586fdc6476b | 2022-02-24T19:07:03.747671Z |      like | afee8a58-eaa4-445b-98e7-ecb9d5f2f676 |     tan-partly-cloudy-tyson-chartreuse | 2022-02-24T18:57:49.769661Z | fb215388-14d6-4870-9fa3-8586fdc6476b | pink-mostly-cloudy-maggie-put-a-bird-on-it | 2022-02-24T18:57:49.233088Z |
+| b9b692fd-d273-4fa9-9f8a-a72c826b0845 | 9ca4325a-5a1b-4da5-9e5f-e5598a061f33 | 2022-02-24T19:07:03.747671Z |      like | b9b692fd-d273-4fa9-9f8a-a72c826b0845 | mint-green-thunderstorms-diesel-yuccie | 2022-02-24T18:57:47.802645Z | 9ca4325a-5a1b-4da5-9e5f-e5598a061f33 |                    olive-hail-gizmo-brunch | 2022-02-24T18:57:47.684470Z |
+| c4c1125a-7506-4286-a708-065096d36cbb | 8bbe5676-abd4-42eb-b2a2-b222460c6b95 | 2022-02-24T19:07:03.747671Z | subscribe | c4c1125a-7506-4286-a708-065096d36cbb |             turquoise-fine-sasha-vinyl | 2022-02-24T18:57:47.461897Z | 8bbe5676-abd4-42eb-b2a2-b222460c6b95 |                 lime-sunny-snickers-mlkshk | 2022-02-24T18:57:49.738869Z |
+| 690925f1-c932-48fa-b3be-a2f0eb0b772c | 1a3a0d99-9e42-42d1-aa4a-4974f11f13df | 2022-02-24T19:07:03.747671Z |      like | 690925f1-c932-48fa-b3be-a2f0eb0b772c |   sky-blue-cloudy-periods-max-bushwick | 2022-02-24T18:57:50.056871Z | 1a3a0d99-9e42-42d1-aa4a-4974f11f13df |         grey-clear-skies-jasper-craft-beer | 2022-02-24T18:57:49.161467Z |
+| a7f2ffc2-7e32-4547-bd35-4b54431a3ce8 | e6ecabcd-8cb5-4891-bbb5-3efa7e651178 | 2022-02-24T19:07:03.747671Z |      like | a7f2ffc2-7e32-4547-bd35-4b54431a3ce8 |  red-partly-cloudy-sparky-wes-anderson | 2022-02-24T18:57:49.831429Z | e6ecabcd-8cb5-4891-bbb5-3efa7e651178 |   sky-blue-cloudy-periods-lexi-photo-booth | 2022-02-24T18:57:49.994465Z |
+#+end_example
+
+** Inspect the dataset
+#+begin_src clojure
+(tc/info ds)
+#+end_src
+
+#+results:
+#+begin_example
+_unnamed: descriptive-stats [10 12]:
+
+|  :col-name |       :datatype | :n-valid | :n-missing |                     :min |                    :mean |                                :mode |                     :max | :standard-deviation |      :skew |                               :first |                                :last |
+|------------|-----------------|---------:|-----------:|--------------------------|--------------------------|--------------------------------------|--------------------------|--------------------:|-----------:|--------------------------------------|--------------------------------------|
+| created_at | :packed-instant |  2499836 |          0 | 2022-02-24T19:07:03.747Z | 2022-02-24T19:07:29.117Z |                                      | 2022-02-24T19:07:55.018Z |      14721.73272912 | 0.03284974 |          2022-02-24T19:07:03.747671Z |          2022-02-24T19:07:55.018267Z |
+| created_at | :packed-instant |  2499836 |          0 | 2022-02-24T18:57:47.142Z | 2022-02-24T18:57:48.666Z |                                      | 2022-02-24T18:57:50.277Z |        905.90169288 | 0.08215281 |          2022-02-24T18:57:47.517352Z |          2022-02-24T18:57:47.802645Z |
+| created_at | :packed-instant |  2499836 |          0 | 2022-02-24T18:57:47.142Z | 2022-02-24T18:57:48.667Z |                                      | 2022-02-24T18:57:50.277Z |        905.88028294 | 0.07982044 |          2022-02-24T18:57:48.809958Z |          2022-02-24T18:57:47.235727Z |
+|    dest_id |           :uuid |  2499836 |          0 |                          |                          | 86bc6506-bda6-4050-8fcd-71f2f5590c46 |                          |                     |            | eaa8baac-9c41-4c73-b33b-a5a53ed47e18 | 1274cfaf-f58c-4e12-a5c6-d088c673b407 |
+|         id |           :uuid |  2499836 |          0 |                          |                          | ca5dd3b1-6951-4da6-a445-afc2020a95c4 |                          |                     |            | 0a370496-f662-490d-a941-c5f97a784e68 | e55ad0a2-5bc8-43ed-8084-8942e7ffd1d4 |
+|         id |           :uuid |  2499836 |          0 |                          |                          | 86bc6506-bda6-4050-8fcd-71f2f5590c46 |                          |                     |            | eaa8baac-9c41-4c73-b33b-a5a53ed47e18 | 1274cfaf-f58c-4e12-a5c6-d088c673b407 |
+|     src_id |           :uuid |  2499836 |          0 |                          |                          | ca5dd3b1-6951-4da6-a445-afc2020a95c4 |                          |                     |            | 0a370496-f662-490d-a941-c5f97a784e68 | e55ad0a2-5bc8-43ed-8084-8942e7ffd1d4 |
+|       type |         :string |  2499836 |          0 |                          |                          |                            subscribe |                          |                     |            |                            subscribe |                            subscribe |
+|   username |           :text |  2499836 |          0 |                          |                          |   mint-green-overcast-lily-slow-carb |                          |                     |            |   green-partly-cloudy-sammy-crucifix |            cyan-drizzle-sadie-keytar |
+|   username |           :text |  2499836 |          0 |                          |                          |        cyan-mostly-cloudy-roxie-echo |                          |                     |            |           indigo-sunny-precious-swag |            green-hail-snoopy-selfies |
+#+end_example
+
+** Activity by week
+*** Group by week
+#+begin_src clojure
+(do
+  (def weekly (explore/weekly ds))
+  weekly)
+#+end_src
+
+#+results:
+#+begin_example
+_unnamed [2499836 12]:
+
+|                              :src-id |                             :dest-id |                 :created-at |     :type |                                  :id |                              :username |                 :created-at |                                  :id |                               :username |                 :created-at |      :date |      :week |
+|--------------------------------------|--------------------------------------|-----------------------------|-----------|--------------------------------------|----------------------------------------|-----------------------------|--------------------------------------|-----------------------------------------|-----------------------------|------------|------------|
+| 62c0fbb2-3342-4a96-b49b-43cf0d78f995 | faf35ae6-7a7b-4ea3-85da-38257d13d76a | 2022-02-24T19:07:23.285233Z |      like | 62c0fbb2-3342-4a96-b49b-43cf0d78f995 |   pink-partly-cloudy-scooter-semiotics | 2022-02-24T18:57:48.284467Z | faf35ae6-7a7b-4ea3-85da-38257d13d76a | indigo-cloudy-periods-harvey-typewriter | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 1ca94568-20f6-4342-a7b7-d61d4b24b798 | ef9d3849-9c39-4a4f-9899-133ea90ce9a6 | 2022-02-24T19:07:20.569412Z | subscribe | 1ca94568-20f6-4342-a7b7-d61d4b24b798 |                 orchid-sunny-rocky-vhs | 2022-02-24T18:57:47.890191Z | ef9d3849-9c39-4a4f-9899-133ea90ce9a6 |         indigo-showers-sadie-meditation | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| c777a6f8-7e06-4c92-af89-eac55260c64c | fb6c4547-57da-4e7c-83d9-d2fd53ea31fa | 2022-02-24T19:07:52.864529Z |      like | c777a6f8-7e06-4c92-af89-eac55260c64c |                silver-showers-sadie-+1 | 2022-02-24T18:57:48.875582Z | fb6c4547-57da-4e7c-83d9-d2fd53ea31fa |              green-sunny-bandit-bitters | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 8d45cdf4-e342-46d6-a23d-dabb5d150cf1 | 0252bd33-85b6-4644-80de-594e7bf7ee08 | 2022-02-24T19:07:15.457529Z |      like | 8d45cdf4-e342-46d6-a23d-dabb5d150cf1 |    orchid-clear-skies-tyson-phlogiston | 2022-02-24T18:57:49.580792Z | 0252bd33-85b6-4644-80de-594e7bf7ee08 |          purple-mostly-cloudy-tank-lomo | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 5cb40d79-464d-40aa-b91b-a9988d041b63 | f86f16fe-b529-458c-85cb-77df4f652744 | 2022-02-24T19:07:48.926586Z | subscribe | 5cb40d79-464d-40aa-b91b-a9988d041b63 |    cyan-mostly-cloudy-sasha-pork-belly | 2022-02-24T18:57:49.963358Z | f86f16fe-b529-458c-85cb-77df4f652744 |               orchid-hail-dixie-kinfolk | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 5e350192-d924-4cf1-88cf-be71a838a85a | f81206da-02c8-417b-acca-88f219d3a7c7 | 2022-02-24T19:07:47.234175Z |      like | 5e350192-d924-4cf1-88cf-be71a838a85a |       orchid-drizzle-max-messenger-bag | 2022-02-24T18:57:48.685160Z | f81206da-02c8-417b-acca-88f219d3a7c7 |              yellow-sleet-shelby-celiac | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| c239038e-dd2f-4510-9b50-e1805e21bf4e | 41fa7dfe-86b0-4260-b950-6b584ab24a18 | 2022-02-24T19:07:41.404997Z |      like | c239038e-dd2f-4510-9b50-e1805e21bf4e |          green-overcast-roxy-semiotics | 2022-02-24T18:57:48.685160Z | 41fa7dfe-86b0-4260-b950-6b584ab24a18 |             orange-drizzle-sadie-iphone | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 35042241-7570-40c7-a44b-bc0fa85abebe | 0f3666e0-3a39-411e-9245-9e8295f3bfbb | 2022-02-24T19:07:26.059964Z |      like | 35042241-7570-40c7-a44b-bc0fa85abebe |           salmon-snow-peanut-biodiesel | 2022-02-24T18:57:47.629472Z | 0f3666e0-3a39-411e-9245-9e8295f3bfbb |            fuchsia-showers-bear-artisan | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 1664a25f-61d5-4dad-af8d-8e6ca48cd2ce | b46e003f-9c4d-415c-b4b6-a604ba3218f4 | 2022-02-24T19:07:21.575604Z | subscribe | 1664a25f-61d5-4dad-af8d-8e6ca48cd2ce |           plum-rain-dakota-small-batch | 2022-02-24T18:57:48.809958Z | b46e003f-9c4d-415c-b4b6-a604ba3218f4 |               yellow-snow-bailey-yuccie | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 7119e05b-590b-4854-bed6-181344b7c10b | 10202204-f2db-4983-9bfb-76f2944485a8 | 2022-02-24T19:07:27.157751Z |      like | 7119e05b-590b-4854-bed6-181344b7c10b |           fuchsia-sleet-dixie-tattooed | 2022-02-24T18:57:47.980092Z | 10202204-f2db-4983-9bfb-76f2944485a8 |            indigo-snow-harvey-pitchfork | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 3bb74c1d-c86e-4c38-aeaa-67276d2b3986 | 9b7f4e43-74eb-44e2-b9a4-1bad061f4f18 | 2022-02-24T19:07:28.943054Z |      like | 3bb74c1d-c86e-4c38-aeaa-67276d2b3986 |           orange-rain-murphy-wayfarers | 2022-02-24T18:57:48.410224Z | 9b7f4e43-74eb-44e2-b9a4-1bad061f4f18 |         azure-clear-skies-roxy-brooklyn | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| f3c488f5-3ee4-4a8a-bb0a-3055c3fd0d9e | d14a2902-75a8-4edc-b11e-f3cc01953706 | 2022-02-24T19:07:35.826999Z | subscribe | f3c488f5-3ee4-4a8a-bb0a-3055c3fd0d9e |                   red-sunny-toby-fixie | 2022-02-24T18:57:49.708103Z | d14a2902-75a8-4edc-b11e-f3cc01953706 |         teal-showers-murphy-small-batch | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| adcc3f70-8f42-429d-86e2-1375e4dbef4c | 24f1856e-150d-4fd6-aecb-15f8a2c369b4 | 2022-02-24T19:07:17.260248Z | subscribe | adcc3f70-8f42-429d-86e2-1375e4dbef4c |                magenta-snow-rosie-blog | 2022-02-24T18:57:47.774192Z | 24f1856e-150d-4fd6-aecb-15f8a2c369b4 | red-clear-skies-harley-put-a-bird-on-it | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 9417d0d5-515a-46f7-8c10-6b81809625d2 | ad783008-646d-4728-8dff-1abe22bf57fb | 2022-02-24T19:07:26.365124Z |      like | 9417d0d5-515a-46f7-8c10-6b81809625d2 | turquoise-mostly-cloudy-sam-typewriter | 2022-02-24T18:57:48.809958Z | ad783008-646d-4728-8dff-1abe22bf57fb |         sky-blue-drizzle-brutus-bespoke | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| e8baf3c0-e050-4956-8e46-0409af08632b | 2e073cd5-1c37-4ae1-a040-4c1357dd170b | 2022-02-24T19:07:30.643557Z | subscribe | e8baf3c0-e050-4956-8e46-0409af08632b |     lime-overcast-diamond-muggle-magic | 2022-02-24T18:57:47.831013Z | 2e073cd5-1c37-4ae1-a040-4c1357dd170b |                   plum-hail-teddy-tacos | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| e598b452-6d35-4b73-bce7-e14ac0d4f96e | 21f32c1a-fe49-4a04-8d37-e24432983557 | 2022-02-24T19:07:12.623138Z |      like | e598b452-6d35-4b73-bce7-e14ac0d4f96e |       silver-partly-cloudy-dixie-banjo | 2022-02-24T18:57:48.252188Z | 21f32c1a-fe49-4a04-8d37-e24432983557 |       blue-thunderstorms-snickers-tilde | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| f50e1730-4a21-42bb-b44d-c7410d2cac65 | 2da62472-72f3-4d85-8f64-64d25002dca6 | 2022-02-24T19:07:39.540463Z | subscribe | f50e1730-4a21-42bb-b44d-c7410d2cac65 |             indigo-overcast-cocoa-tofu | 2022-02-24T18:57:48.502696Z | 2da62472-72f3-4d85-8f64-64d25002dca6 |          orange-sleet-shelby-craft-beer | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| c0dd7d31-5cf1-43b0-b968-46e5a2be7bde | 12465ad2-2489-4d04-8254-8aca84259930 | 2022-02-24T19:07:12.623138Z | subscribe | c0dd7d31-5cf1-43b0-b968-46e5a2be7bde |               teal-rain-oscar-truffaut | 2022-02-24T18:57:47.573653Z | 12465ad2-2489-4d04-8254-8aca84259930 |    grey-thunder-falls-luna-cold-pressed | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| ece0e280-04f9-45f1-a670-858196230511 | 48af169f-7ac6-4d12-a8bb-4b81a870a540 | 2022-02-24T19:07:25.364246Z | subscribe | ece0e280-04f9-45f1-a670-858196230511 |           plum-clear-skies-casey-ramps | 2022-02-24T18:57:50.166695Z | 48af169f-7ac6-4d12-a8bb-4b81a870a540 |         grey-mostly-cloudy-sam-cardigan | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 6e4b3dd6-3c51-4549-9cc6-4e50967c1a4c | 91cbd35a-5e80-4322-ac70-cf3c7a734458 | 2022-02-24T19:07:37.337688Z | subscribe | 6e4b3dd6-3c51-4549-9cc6-4e50967c1a4c |            white-drizzle-coco-meggings | 2022-02-24T18:57:48.252188Z | 91cbd35a-5e80-4322-ac70-cf3c7a734458 |             yellow-overcast-sandy-ennui | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 1b0dac6d-4748-4b94-9d42-773e4916842d | f80b9e7b-cd0b-4003-81a0-c5c6730119f6 | 2022-02-24T19:07:38.354370Z | subscribe | 1b0dac6d-4748-4b94-9d42-773e4916842d |       salmon-cloudy-periods-roxy-pabst | 2022-02-24T18:57:49.614902Z | f80b9e7b-cd0b-4003-81a0-c5c6730119f6 |      grey-mostly-cloudy-snickers-salvia | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| b4913e96-d118-4bc9-93ab-ff9ed450f968 | 0cfccede-12bd-407b-9933-43308977bf31 | 2022-02-24T19:07:33.637141Z | subscribe | b4913e96-d118-4bc9-93ab-ff9ed450f968 |    green-thunderstorms-rusty-waistcoat | 2022-02-24T18:57:48.471351Z | 0cfccede-12bd-407b-9933-43308977bf31 |   blue-thunderstorms-marley-green-juice | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 6599f0ce-df1d-4e4b-8237-cbd3ba493451 | c3dd0649-578a-4f26-8d5f-6a4fd627999e | 2022-02-24T19:07:42.025137Z | subscribe | 6599f0ce-df1d-4e4b-8237-cbd3ba493451 |            white-fine-brutus-pinterest | 2022-02-24T18:57:49.994465Z | c3dd0649-578a-4f26-8d5f-6a4fd627999e |                  teal-rain-lilly-cronut | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 9205ff39-9cb5-4f44-a6c0-fa11a6c6a002 | 1b285961-82e3-4083-bf38-16ccdcc09600 | 2022-02-24T19:07:49.351505Z | subscribe | 9205ff39-9cb5-4f44-a6c0-fa11a6c6a002 |    violet-thunder-falls-diamond-kitsch | 2022-02-24T18:57:48.098399Z | 1b285961-82e3-4083-bf38-16ccdcc09600 |           tan-thunderstorms-taz-disrupt | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+| 9dc59745-66aa-4f3a-8d51-accb2c122055 | d6814bdb-e9df-4d53-8cdb-4e28397c80d3 | 2022-02-24T19:07:53.608686Z |      like | 9dc59745-66aa-4f3a-8d51-accb2c122055 |      fuchsia-cloudy-periods-sasha-chia | 2022-02-24T18:57:49.677030Z | d6814bdb-e9df-4d53-8cdb-4e28397c80d3 |                   green-snow-abby-carry | 2022-02-24T18:57:47.142440Z | 2022-02-24 | 2022-02-21 |
+#+end_example
+
+*** Frequencies
+#+begin_src clojure
+(sort-by second > (map vec (frequencies (map str (tc/column weekly :type)))))
+#+end_src
+
+#+results:
+| subscribe | 1250241 |
+| like      | 1249595 |
+
+
+* Development
+** Faker
+To make things a little more fun, we use some Faker fixtures to generate data.
+Rather than building on top of Ruby, Perl, Java or any other language, we'll
+instead work with data, which requires some vendoring via a little shell script.
+
+#+name: fixture-urls
+- https://raw.githubusercontent.com/DiUS/java-faker/master/src/main/resources/en/color.yml
+- https://raw.githubusercontent.com/DiUS/java-faker/master/src/main/resources/en/dog.yml
+- https://raw.githubusercontent.com/DiUS/java-faker/master/src/main/resources/en/hacker.yml
+- https://raw.githubusercontent.com/DiUS/java-faker/master/src/main/resources/en/hipster.yml
+- https://raw.githubusercontent.com/DiUS/java-faker/master/src/main/resources/en/weather.yml
+
+#+begin_src sh :var urls=fixture-urls :results silent
+for url in $urls; do
+  curl --silent --location "$url" \
+    | yq --output-format json '.en.faker' \
+    | jet --from json --out edn --keywordize --pretty \
+    > "resources/fixtures/$(basename "$url" ".yml").edn"
+done
+#+end_src

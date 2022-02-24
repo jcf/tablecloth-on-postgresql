@@ -1,0 +1,6 @@
+CREATE DATABASE tablecloth
+WITH
+  ENCODING 'UTF-8'
+  OWNER scientist;
+
+GRANT ALL PRIVILEGES ON DATABASE tablecloth TO scientist;

@@ -1,0 +1,30 @@
+{:paths ["resources" "src"]
+ :deps
+ {babashka/fs                         {:mvn/version "0.1.2"}
+  camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
+  clojure.java-time/clojure.java-time {:mvn/version "0.3.3"}
+  com.github.seancorfield/honeysql    {:mvn/version "2.2.858"}
+  com.github.seancorfield/next.jdbc   {:mvn/version "1.2.761"}
+  org.clojure/clojure                 {:mvn/version "1.10.3"}
+  org.postgresql/postgresql           {:mvn/version "42.3.1"}
+  scicloj/tablecloth                  {:mvn/version "6.051"}
+  techascent/tech.ml.dataset          {:mvn/version "6.052"}
+  techascent/tech.ml.dataset.sql      {:mvn/version "6.046-01"}}
+
+ :aliases
+ {:cider
+  {:extra-deps {cider/cider-nrepl {:mvn/version "0.28.1"}}
+   :main-opts  ["-m" "nrepl.cmdline" "--middleware" "[cider.nrepl/cider-middleware]"]}
+
+  :dev
+  {:extra-paths ["dev" "dev-resources"]
+   :extra-deps
+   {org.clojure/test.check      {:mvn/version "1.1.1"}
+    org.clojure/tools.namespace {:mvn/version "1.2.0"}
+
+    ;; To workaround Lispy breaking when jacking in.
+    com.cemerick/pomegranate {:mvn/version "1.1.0"}
+    org.tcrawley/dynapath    {:mvn/version "1.1.0"}}}
+
+  :test
+  {:extra-paths ["test" "test-resources"]}}}

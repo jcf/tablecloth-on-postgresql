@@ -1,0 +1,6 @@
+#!/bin/sh
+PGPASS=please exec psql \
+  --dbname tablecloth \
+  --username scientist \
+  --no-password \
+  "$@"

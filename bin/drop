@@ -1,0 +1,2 @@
+#!/bin/sh
+sudo su postgres -c 'psql --file=db/drop.sql'
