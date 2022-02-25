@@ -15,6 +15,25 @@
   `tech.v3.dataset.sql`."
   {:builder-fn jdbc.result-set/as-unqualified-lower-maps})
 
+(def read-only-connect-opts
+  "Options map to pass to `connect!` when loading datasets from a SQL database.
+
+  Auto-commit is disabled as to allow batched inserts. We run a read-only
+  connection however to be safe by default. You might be bolder than me."
+  {:auto-commit false
+   :read-only   true})
+
+;;; ----------------------------------------------------------------------------
+;;; Enum
+
+;; TODO Appease clj-kondo: `jdbc.types/as-other` is unresolved.
+(defn keyword->enum
+  [k]
+  (-> k name jdbc.types/as-other))
+
+;;; ----------------------------------------------------------------------------
+;;; Connect!
+
 (defn get-datasource
   []
   (jdbc/get-datasource {:dbtype   "postgres"
@@ -24,20 +43,19 @@
                         :password "please"}))
 
 (defn get-connection
-  ^java.sql.Connection
-  [source]
-  (jdbc/get-connection source))
+  (^java.sql.Connection [source]
+   (get-connection source {}))
+  (^java.sql.Connection [source opts]
+   (jdbc/get-connection source opts)))
 
 (defn connect!
-  ^java.sql.Connection
-  []
-  (get-connection (get-datasource)))
+  (^java.sql.Connection []
+   (connect! {}))
+  (^java.sql.Connection [opts]
+   (get-connection (get-datasource) opts)))
 
-(defn get-read-only-connection
-  ^java.sql.Connection
-  [source]
-  (jdbc/get-connection source {:auto-commit false
-                               :read-only   true}))
+;;; ----------------------------------------------------------------------------
+;;; Execute!
 
 (defn execute!
   ([conn query]
@@ -57,9 +75,8 @@
   ([conn query opts]
    (jdbc/execute-one! conn (sql/format query) opts)))
 
-(defn keyword->enum
-  [k]
-  (-> k name jdbc.types/as-other))
+;;; ----------------------------------------------------------------------------
+;;; Count
 
 (defn count
   [conn table-name]

@@ -44,5 +44,5 @@
          (tc/order-by inst-column :asc)))))
 
 (comment
-  (with-open [conn (postgres/connect!)]
+  (with-open [conn (postgres/connect! postgres/read-only-connect-opts)]
     (query->dataset conn activities-query)))
