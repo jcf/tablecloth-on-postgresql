@@ -19,6 +19,3 @@
       (str/replace #"[^\w+]" "-")
       (str/replace #"\-{1,}" "-")
       (str/replace #"(:?^\-)|(:?\-$)" "")))
-
-(comment
-  (slugify "?! You ain't seen nothing yet! "))
