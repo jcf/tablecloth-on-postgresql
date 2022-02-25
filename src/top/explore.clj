@@ -4,7 +4,6 @@
    [camel-snake-kebab.core :as csk]
    [honey.sql :as sql]
    [java-time :as time]
-   [next.jdbc :as jdbc]
    [tablecloth.api :as tc]
    [tech.v3.dataset.sql :as ds.sql]
    [top.postgres :as postgres]))
