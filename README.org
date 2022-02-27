@@ -12,10 +12,10 @@
 * Getting started
 ** PostgreSQL setup
 We need a PostgreSQL server, which you can run in a container etc. Assuming a
-running server on =localhost:5432=, and superuser access available, [[file:bin/setup][=bin/setup=]]
-script will create the necessary schema.
+running server on =localhost:5432=, and a =postgres= user accessible via =sudo
+su=, the [[file:bin/setup][=bin/setup=]] script will create the necessary schema.
 
-#+begin_src sh :results output verbatim
+#+begin_src sh :exports results :results output verbatim
 bin/setup 2>&1
 #+end_src
 
@@ -27,6 +27,9 @@ bin/setup 2>&1
 : CREATE TABLE
 : CREATE TYPE
 : CREATE TABLE
+
+Alternatively, you can manually apply the SQL in [[file:db/][=db=]] via =psql= by replicating
+the behaviour of =bin/setup=.
 
 ** PostgreSQL schema
 #+begin_src sql
@@ -41,15 +44,16 @@ bin/setup 2>&1
 | public            | people     | table | scientist |
 
 ** Wiping the database
-To wipe out the database and associated user execute [[file:db/drop.sql][=db/drop.sql=]].
+To wipe out the database and associated user execute [[file:bin/drop][=bin/drop=]].
 
-#+begin_src sh :eval query :results output verbatim
+#+begin_src sh :eval query :exports results :results output verbatim
 bin/drop 2>&1
 #+end_src
 
 #+results:
 : DROP DATABASE
 : DROP ROLE
+
 ** Seeding the database
 You can fill your PostgreSQL database with some excessive use of Clojure and
 =clojure.spec= via the =top.seed= namespace.
