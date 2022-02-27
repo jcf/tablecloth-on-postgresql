@@ -9,6 +9,11 @@
 #+author: James Conroy-Finn
 #+date:   2022-02-24
 
+[[https://github.com/scicloj/tablecloth][Tablecloth]] on [[https://www.postgresql.org/][PostgreSQL]] is the title of a presentation I gave to a small number
+of [[https://scicloj.github.io/][scicloj]] members in February 2022. This repository accompanies the
+presentation to help fellow explorers follow in my footsteps by interacting with
+data in a relational database from Tablecloth.
+
 * Getting started
 ** PostgreSQL setup
 We need a PostgreSQL server, which you can run in a container etc. Assuming a
